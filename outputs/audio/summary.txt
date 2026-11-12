@@ -1,0 +1,6 @@
+audio demo
+sample_rate 4096
+samples 4096
+energy_original 1079.668661
+energy_lowpass 889.795177
+energy_bandpass 887.701492
