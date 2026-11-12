@@ -1,0 +1,5 @@
+signal demo
+sample_rate 1024
+dominant_hz 60.0000
+peaks_hz 60.000, 180.000
+peak_power 0.329974, 0.0531984

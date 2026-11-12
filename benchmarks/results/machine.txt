@@ -1,0 +1,6 @@
+label: build VM
+python: 3.12.3
+system: Linux 6.12.113+
+machine: x86_64
+cpu: Intel(R) Xeon(R) Processor
+cpus: 4

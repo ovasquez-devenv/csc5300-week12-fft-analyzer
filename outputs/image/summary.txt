@@ -1,0 +1,7 @@
+image demo
+size 128
+mse_q10 191.454902
+mse_q50 108.564417
+mse_q90 15.121095
+denoise_mse_to_clean 162.227017
+noisy_mse_to_clean 142.917055
