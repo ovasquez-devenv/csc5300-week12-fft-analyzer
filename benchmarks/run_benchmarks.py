@@ -1,10 +1,11 @@
 """Time the FFTs, the matrix products, and a Hilbert condition check.
 
 Results land in benchmarks/results as a CSV and three PNG plots.
-This script records the machine it actually ran on. The copy checked in
-with the project was measured on the build VM.
+Pass --label to name the machine in machine.txt and on the plot titles.
+If you omit it, the label is the hostname, or "my PC" when that name is empty.
 """
 
+import argparse
 import platform
 import sys
 import time
@@ -22,6 +23,11 @@ from fft_analyzer.core.fft import dft_naive, fft_iterative, fft_recursive
 from fft_analyzer.core.matrix import matmul_classical, strassen_matmul
 from fft_analyzer.core.numerical import condition_number, hilbert, perturbed_solution_change
 from fft_analyzer.visualization.plots import plot_condition_numbers, plot_series
+
+
+def _default_label():
+    name = (platform.node() or "").strip()
+    return name if name else "my PC"
 
 
 def _cpu_model():
@@ -134,7 +140,15 @@ def _series(rows, group, method, sizes):
     return [lookup.get((n, method)) for n in sizes]
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Time FFTs, matrix products, and a Hilbert check.")
+    parser.add_argument(
+        "--label",
+        default=None,
+        help="Name stored in machine.txt. Defaults to the hostname, or 'my PC'.",
+    )
+    args = parser.parse_args(argv)
+    label = args.label.strip() if args.label else _default_label()
     out = ROOT / "benchmarks" / "results"
     out.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -156,7 +170,7 @@ def main():
         out / "fft_timing.png",
         xlabel="length",
         ylabel="seconds (median)",
-        title="FFT timing on the build VM",
+        title="FFT timing on %s" % label,
         loglog=True,
     )
     mat_sizes = [8, 16, 32, 48, 64, 96, 128]
@@ -170,14 +184,14 @@ def main():
         out / "matmul_timing.png",
         xlabel="n",
         ylabel="seconds",
-        title="Square matrix multiply on the build VM",
+        title="Square matrix multiply on %s" % label,
         loglog=True,
     )
     plot_condition_numbers(sizes, conds, errors, out / "condition_error.png")
 
     note = "\n".join(
         [
-            "label: build VM",
+            "label: %s" % label,
             "python: %s" % platform.python_version(),
             "system: %s %s" % (platform.system(), platform.release()),
             "machine: %s" % platform.machine(),

@@ -1,16 +1,16 @@
 # Chapter 11 report: FFTAnalyzer
 
-Word count: 1474 words, not counting this line or the title.
+Word count: 1493 words, not counting this line or the title.
 
 ## Executive summary
 
 FFTAnalyzer is my Week 12 package for the matrix routines and fast transforms in Chapter 11. I wrote the algorithms. NumPy stores the arrays, and the tests use np.fft and np.linalg only as a check.
 
-The iterative Cooley-Tukey FFT does each butterfly stage as one NumPy operation on the whole block. On the build VM, length 2^20 took 0.182 seconds. NumPy's fft took 0.0254 seconds on that same array. The direct DFT at length 1024 took 0.250 seconds. Condition numbers for the Hilbert matrices go from about 19 at n = 2 to 1.60e13 at n = 10. The CSV and plots are in benchmarks/results.
+The iterative Cooley-Tukey FFT does each butterfly stage as one NumPy operation on the whole block. On my PC, length 2^20 took 0.361 seconds. NumPy's fft took 0.0352 seconds on that same array. The direct DFT at length 1024 took 0.320 seconds. Condition numbers for the Hilbert matrices go from about 19 at n = 2 to 1.60e13 at n = 10. The CSV and plots are in benchmarks/results.
 
 ## Numerical algorithm theory
 
-Amakobe (2026, section 11.5) starts from the triple loop, O(n^3) for a square matrix, then Strassen's split: 2 by 2 blocks with seven products instead of eight. That recurrence is O(n^log2(7)), about O(n^2.807). The same section says the extra additions and the weaker rounding are why libraries usually skip it. I implemented it anyway, with the triple loop as the leaf at 16 by 16. Sizes at or below that leaf never split, so the n = 8 and n = 16 times match the classical timer.
+Amakobe (2026, section 11.5) starts from the triple loop, O(n^3) for a square matrix, then Strassen's split: 2 by 2 blocks with seven products instead of eight. That recurrence is O(n^log2(7)), about O(n^2.807). The same section says the extra additions and the weaker rounding are why libraries usually skip it. I implemented it anyway, with the triple loop as the leaf at 16 by 16, so those sizes do not split. On my PC the plain loop is faster at n = 16, 0.000532 seconds against 0.000589. From n = 32 up, Strassen is faster.
 
 LU with partial pivoting writes PA = LU. The largest remaining column entry becomes the pivot. The determinant is the swap sign times the product of the U diagonal. A zero pivot returns 0, and solve raises. Substitution finishes the triangular systems, and the inverse is one solve per identity column. QR is Householder, so A = QR with Q orthogonal. The power method uses the triple loop for each matrix-vector product and stops on the Rayleigh quotient. On the matrix with 2s on the diagonal and 1s off it, the value is 3.
 
@@ -54,15 +54,15 @@ A nudge of size 1e-8 in b, one fixed random direction, moves the Hilbert solutio
 
 ## Benchmarking plots
 
-Times below are medians from benchmarks/run_benchmarks.py on the build VM: Python 3.12.3, Linux, an Intel Xeon, 4 CPUs. I will rerun it on my own PC later. The CSV is benchmarks/results/benchmarks.csv. Naive DFT and recursive FFT use 3 repeats, except one naive run at length 1024. Iterative FFT and np.fft use 5 repeats on small sizes and one run at 2^18 and 2^20. Matrix products use 5 repeats through n = 64 and 3 after that.
+Times below are medians from benchmarks/run_benchmarks.py on my PC: Python 3.14.7, Windows 11, AMD64, 12 CPUs. The CSV is benchmarks/results/benchmarks.csv. Naive and recursive runs use 3 repeats, except one naive run at length 1024. Iterative FFT and np.fft use 5 repeats under 2^14, then 3, then one run from 2^18 up. Matrix products use 5 repeats through n = 64 and 3 after that. Figure titles still say build VM from that old hardcoded string. The CSV is this machine.
 
 ![FFT timing](../benchmarks/results/fft_timing.png)
 
-At length 1024 the naive DFT took 0.250 seconds, the recursive FFT 0.00367 seconds, the iterative FFT 0.000128 seconds, and np.fft 0.000009 seconds. That is about 1,950 times between the double loop and the iterative transform. At length 4096 the recursive form took 0.0149 seconds and the iterative form took 0.000323 seconds, so I stopped the recursive curve there. At 2^20 the iterative FFT took 0.182 seconds and np.fft took 0.0254 seconds, about 7.2 times apart.
+At length 1024 the naive DFT took 0.320 seconds, the recursive FFT 0.00389 seconds, the iterative FFT 0.000128 seconds, and np.fft 0.0000097 seconds. That is about 2,490 times between the double loop and the iterative transform. At length 4096 the recursive form took 0.0160 seconds and the iterative form took 0.000324 seconds. At 2^20 the iterative FFT took 0.361 seconds and np.fft took 0.0352 seconds, about 10.3 times apart.
 
 ![Matrix multiply timing](../benchmarks/results/matmul_timing.png)
 
-From n = 64 to n = 128 the classical time went from 0.0333 seconds to 0.266 seconds, a factor of 8.00, which is what n cubed predicts when n doubles. Strassen went from 0.0279 seconds to 0.190 seconds, a factor of about 6.82. log2(7) is about 2.807, so a doubling should cost about 7.0 if the recurrence dominated. At n = 128 Strassen was about 1.4 times faster. At n = 16 the timers match, because that size is the leaf and Strassen does not split.
+From n = 64 to n = 128 the classical time went from 0.0348 seconds to 0.271 seconds, a factor of 7.81. An n cubed algorithm predicts 8 when n doubles, so this is close. Strassen went from 0.0291 seconds to 0.200 seconds, a factor of about 6.88. log2(7) is about 2.807, so a doubling should cost about 7.0 if the recurrence dominated. At n = 128 Strassen was about 1.36 times faster. At n = 16 the classical loop wins, because that size is the leaf and Strassen does not split.
 
 ![Hilbert condition numbers and solution change](../benchmarks/results/condition_error.png)
 
@@ -70,7 +70,7 @@ From n = 64 to n = 128 the classical time went from 0.0333 seconds to 0.266 seco
 
 The FFT is cheap enough to live inside ordinary audio and image code (Amakobe, 2026, sections 11.1 and 11.7). The recursive form is the one I can walk by hand. The iterative form is the one that finishes a million samples. A frequency product is convolution, polynomial multiplication, and the autocorrelation on the lag-12 series.
 
-The triple loop scaled by 8 when n doubled, which is the right check on the classical product. Strassen helped a little at these sizes. I trust the condition number more than a tiny residual, because a Hilbert solve can look fine on Ax - b and still jump when b moves by 1e-8.
+The triple loop scaled by about 7.8 when n doubled, close to the factor of 8 from n cubed. Strassen was faster from n = 32 up and slower at the n = 16 leaf. I trust the condition number more than a tiny residual, because a Hilbert solve can look fine on Ax - b and still jump when b moves by 1e-8.
 
 The tests check the FFT against np.fft, including a length 2^20 round trip, plus convolution, LU and QR reconstruction, the filters, compression error falling as quality rises, and the stability checks. Examples write a synthetic WAV, a drawn image, and the plots under outputs/. Nothing is downloaded.
 

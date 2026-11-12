@@ -1,6 +1,6 @@
-label: build VM
-python: 3.12.3
-system: Linux 6.12.113+
-machine: x86_64
-cpu: Intel(R) Xeon(R) Processor
-cpus: 4
+label: Omar's PC
+python: 3.14.7
+system: Windows 11
+machine: AMD64
+cpu: AMD64 Family 26 Model 104 Stepping 0, AuthenticAMD
+cpus: 12
