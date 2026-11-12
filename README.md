@@ -40,7 +40,7 @@ py -3.14 examples/image_demo.py
 py -3.14 benchmarks/run_benchmarks.py
 ```
 
-That writes `benchmarks/results/benchmarks.csv` plus timing and condition-number plots. The copy in the repo was measured on the build VM (Python 3.12.3, Linux, Intel Xeon, 4 CPUs). I will rerun it on my own PC before I turn the project in. The report quotes those measured numbers.
+That writes `benchmarks/results/benchmarks.csv` plus timing and condition-number plots. The copy in the repo is from my PC (Python 3.14.7, Windows 11, AMD64, 12 CPUs). The report quotes those measured numbers. Pass `--label` if you want a different name in `machine.txt`. The default is the hostname, or "my PC" when the hostname is empty.
 
 ## Layout
 

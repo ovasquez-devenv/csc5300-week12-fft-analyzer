@@ -1,10 +1,12 @@
 """Time the FFTs, the matrix products, and a Hilbert condition check.
 
 Results land in benchmarks/results as a CSV and three PNG plots.
-This script records the machine it actually ran on. The copy checked in
-with the project was measured on the build VM.
+Pass --label to name the machine in machine.txt and on the plot titles.
+If you omit it, the label is the hostname, or "my PC" when that name is empty.
 """
 
+import argparse
+import csv
 import platform
 import sys
 import time
@@ -22,6 +24,11 @@ from fft_analyzer.core.fft import dft_naive, fft_iterative, fft_recursive
 from fft_analyzer.core.matrix import matmul_classical, strassen_matmul
 from fft_analyzer.core.numerical import condition_number, hilbert, perturbed_solution_change
 from fft_analyzer.visualization.plots import plot_condition_numbers, plot_series
+
+
+def _default_label():
+    name = (platform.node() or "").strip()
+    return name if name else "my PC"
 
 
 def _cpu_model():
@@ -134,15 +141,27 @@ def _series(rows, group, method, sizes):
     return [lookup.get((n, method)) for n in sizes]
 
 
-def main():
-    out = ROOT / "benchmarks" / "results"
-    out.mkdir(parents=True, exist_ok=True)
+def read_benchmark_rows(path):
+    """Load a saved CSV. This does not time anything."""
     rows = []
-    run_fft(rows)
-    run_matmul(rows)
-    sizes, conds, errors = run_condition(rows)
-    write_csv(out / "benchmarks.csv", rows)
+    with open(path, newline="") as handle:
+        for record in csv.DictReader(handle):
+            rows.append(
+                (
+                    record["group"],
+                    int(record["size"]),
+                    record["method"],
+                    float(record["seconds"]),
+                    int(record["repeats"]),
+                )
+            )
+    return rows
 
+
+def redraw_plots(out, label, rows=None):
+    """Draw the three PNGs from saved rows. The CSV is left untouched."""
+    if rows is None:
+        rows = read_benchmark_rows(out / "benchmarks.csv")
     fft_sizes = [2**k for k in range(5, 21)]
     plot_series(
         fft_sizes,
@@ -156,7 +175,7 @@ def main():
         out / "fft_timing.png",
         xlabel="length",
         ylabel="seconds (median)",
-        title="FFT timing on the build VM",
+        title="FFT timing on %s" % label,
         loglog=True,
     )
     mat_sizes = [8, 16, 32, 48, 64, 96, 128]
@@ -170,14 +189,49 @@ def main():
         out / "matmul_timing.png",
         xlabel="n",
         ylabel="seconds",
-        title="Square matrix multiply on the build VM",
+        title="Square matrix multiply on %s" % label,
         loglog=True,
     )
+    conds_by_size = {}
+    for group, size, method, seconds, _repeats in rows:
+        if group == "condition":
+            conds_by_size.setdefault(size, {})[method] = seconds
+    sizes = sorted(conds_by_size)
+    conds = [conds_by_size[n]["hilbert_cond"] for n in sizes]
+    errors = [conds_by_size[n]["relative_solution_change"] for n in sizes]
     plot_condition_numbers(sizes, conds, errors, out / "condition_error.png")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Time FFTs, matrix products, and a Hilbert check.")
+    parser.add_argument(
+        "--label",
+        default=None,
+        help="Name stored in machine.txt and used on the plot titles. Defaults to the hostname, or 'my PC'.",
+    )
+    parser.add_argument(
+        "--plot-only",
+        action="store_true",
+        help="Redraw the three PNGs from benchmarks.csv. Does not time anything or rewrite the CSV.",
+    )
+    args = parser.parse_args(argv)
+    label = args.label.strip() if args.label else _default_label()
+    out = ROOT / "benchmarks" / "results"
+    out.mkdir(parents=True, exist_ok=True)
+    if args.plot_only:
+        redraw_plots(out, label)
+        print("redrew plots for %s" % label)
+        return
+    rows = []
+    run_fft(rows)
+    run_matmul(rows)
+    run_condition(rows)
+    write_csv(out / "benchmarks.csv", rows)
+    redraw_plots(out, label, rows=rows)
 
     note = "\n".join(
         [
-            "label: build VM",
+            "label: %s" % label,
             "python: %s" % platform.python_version(),
             "system: %s %s" % (platform.system(), platform.release()),
             "machine: %s" % platform.machine(),
