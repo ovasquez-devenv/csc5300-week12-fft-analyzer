@@ -6,6 +6,7 @@ If you omit it, the label is the hostname, or "my PC" when that name is empty.
 """
 
 import argparse
+import csv
 import platform
 import sys
 import time
@@ -140,23 +141,27 @@ def _series(rows, group, method, sizes):
     return [lookup.get((n, method)) for n in sizes]
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description="Time FFTs, matrix products, and a Hilbert check.")
-    parser.add_argument(
-        "--label",
-        default=None,
-        help="Name stored in machine.txt. Defaults to the hostname, or 'my PC'.",
-    )
-    args = parser.parse_args(argv)
-    label = args.label.strip() if args.label else _default_label()
-    out = ROOT / "benchmarks" / "results"
-    out.mkdir(parents=True, exist_ok=True)
+def read_benchmark_rows(path):
+    """Load a saved CSV. This does not time anything."""
     rows = []
-    run_fft(rows)
-    run_matmul(rows)
-    sizes, conds, errors = run_condition(rows)
-    write_csv(out / "benchmarks.csv", rows)
+    with open(path, newline="") as handle:
+        for record in csv.DictReader(handle):
+            rows.append(
+                (
+                    record["group"],
+                    int(record["size"]),
+                    record["method"],
+                    float(record["seconds"]),
+                    int(record["repeats"]),
+                )
+            )
+    return rows
 
+
+def redraw_plots(out, label, rows=None):
+    """Draw the three PNGs from saved rows. The CSV is left untouched."""
+    if rows is None:
+        rows = read_benchmark_rows(out / "benchmarks.csv")
     fft_sizes = [2**k for k in range(5, 21)]
     plot_series(
         fft_sizes,
@@ -187,7 +192,42 @@ def main(argv=None):
         title="Square matrix multiply on %s" % label,
         loglog=True,
     )
+    conds_by_size = {}
+    for group, size, method, seconds, _repeats in rows:
+        if group == "condition":
+            conds_by_size.setdefault(size, {})[method] = seconds
+    sizes = sorted(conds_by_size)
+    conds = [conds_by_size[n]["hilbert_cond"] for n in sizes]
+    errors = [conds_by_size[n]["relative_solution_change"] for n in sizes]
     plot_condition_numbers(sizes, conds, errors, out / "condition_error.png")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Time FFTs, matrix products, and a Hilbert check.")
+    parser.add_argument(
+        "--label",
+        default=None,
+        help="Name stored in machine.txt and used on the plot titles. Defaults to the hostname, or 'my PC'.",
+    )
+    parser.add_argument(
+        "--plot-only",
+        action="store_true",
+        help="Redraw the three PNGs from benchmarks.csv. Does not time anything or rewrite the CSV.",
+    )
+    args = parser.parse_args(argv)
+    label = args.label.strip() if args.label else _default_label()
+    out = ROOT / "benchmarks" / "results"
+    out.mkdir(parents=True, exist_ok=True)
+    if args.plot_only:
+        redraw_plots(out, label)
+        print("redrew plots for %s" % label)
+        return
+    rows = []
+    run_fft(rows)
+    run_matmul(rows)
+    run_condition(rows)
+    write_csv(out / "benchmarks.csv", rows)
+    redraw_plots(out, label, rows=rows)
 
     note = "\n".join(
         [

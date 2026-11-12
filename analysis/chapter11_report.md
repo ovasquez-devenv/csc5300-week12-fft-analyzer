@@ -1,6 +1,6 @@
 # Chapter 11 report: FFTAnalyzer
 
-Word count: 1493 words, not counting this line or the title.
+Word count: 1485.
 
 ## Executive summary
 
@@ -54,7 +54,7 @@ A nudge of size 1e-8 in b, one fixed random direction, moves the Hilbert solutio
 
 ## Benchmarking plots
 
-Times below are medians from benchmarks/run_benchmarks.py on my PC: Python 3.14.7, Windows 11, AMD64, 12 CPUs. The CSV is benchmarks/results/benchmarks.csv. Naive and recursive runs use 3 repeats, except one naive run at length 1024. Iterative FFT and np.fft use 5 repeats under 2^14, then 3, then one run from 2^18 up. Matrix products use 5 repeats through n = 64 and 3 after that. Figure titles still say build VM from that old hardcoded string. The CSV is this machine.
+Times below are medians from benchmarks/run_benchmarks.py on my PC: Python 3.14.7, Windows 11, AMD64, 12 CPUs. The CSV is benchmarks/results/benchmarks.csv. Naive and recursive runs use 3 repeats, except one naive run at length 1024. Iterative FFT and np.fft use 5 repeats under 2^14, then 3, then one run from 2^18 up. Matrix products use 5 repeats through n = 64 and 3 after that.
 
 ![FFT timing](../benchmarks/results/fft_timing.png)
 
